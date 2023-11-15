@@ -1,6 +1,6 @@
-# MongoDB Atlas Vector Search (Images) on Fashion Products
+# MongoDB Atlas Vector Search with Full-Text Search boosting
 
-# Atlas Vector Search on Fashion Products
+# Atlas Vector Search on Wikipedia Articles
 
 How to make a search on the visual characteristic of the products that were not part of the metadata of the product? 
 Let me be more clear, you have millions of fashion products and you don't have color/category information of the product and you have the following simple data model:
