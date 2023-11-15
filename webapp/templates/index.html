@@ -130,7 +130,7 @@
 <div class="container">
   <div class="row">
     <div class="col-12">
-      <h1><img width="100" height="80" src="https://1000logos.net/wp-content/uploads/2020/08/MongoDB-Emblem.jpg" />Demo: MongoDB Atlas Vector Search on Text Responses</h1>
+      <h1><img width="100" height="80" src="https://1000logos.net/wp-content/uploads/2020/08/MongoDB-Emblem.jpg" />Demo: MongoDB Atlas Vector Search on Wikipedia Data</h1>
     </div>
   </div>
 </div>
@@ -138,16 +138,49 @@
 
 <div class="container">
   <div class="row">
-    <div class="col-xs-1">
+    <div class="col-xs-2">
       <div style="padding-left: 1px;">
-          <p>Text:</p>
+          <strong>Vector Search Query:</strong>
+          <div id="custom-search-input" class="input-group custom-search-form">
+            <input id="search_box" type="text" class="typeahead" placeholder="Search Articles">
+          </div><!-- /input-group -->
+      </div>
+    </div>
+  
+    <div class="col-xs-3 form-inline">
+
+      <div><strong>Languages:</strong></div>
+      <div class="checkbox">
+          <input type="checkbox" checked id="languages" value="english">
+          <label for="languages">
+              English
+          </label>
+      </div>
+      <div class="checkbox">
+          <input type="checkbox" id="languages-1" value="french">
+          <label for="languages-1">
+              French
+          </label>
+      </div>
+      <div class="checkbox">
+          <input type="checkbox" id="languages-2" value="german">
+          <label for="languages-2">
+              German
+          </label>
+      </div>
+      <div class="checkbox">
+          <input type="checkbox" id="languages-3" value="italian">
+          <label for="languages-3">
+              Italian
+          </label>
       </div>
     </div>
     <div class="col-xs-2">
-      <div style="padding-left: 5px;">
-        <div id="custom-search-input" class="input-group custom-search-form">
-          <input id="search_box" type="text" class="typeahead" placeholder="search responses">
-        </div><!-- /input-group -->
+      <div>
+          <strong>Full Text Search Boost:</strong>
+          <div id="custom-search-input" class="input-group custom-search-form">
+            <input id="fts_box" type="text" class="typeahead" placeholder="Keywords">
+          </div><!-- /input-group -->
       </div>
     </div>
     <div class="col-xs-1">
@@ -187,14 +220,18 @@
     });  
   
     $('#search_button').click(function() {
-      var letters = $('#search_box').val();
+      var vsQuery = $('#search_box').val();
+      var ftsQuery = $('#fts_box').val();
+      var languages = $("input:checkbox:checked").map(function(){
+        return $(this).val();
+      }).toArray();
 
       $.ajax({
-          url: `/searchResponses?vector=${letters}&path=title`
+          url: `/search?vector=${vsQuery}&text=${ftsQuery}&path=title&languages=${languages}`
         }).done(function(results){
           var jsonResults = JSON.parse(results).docs
           console.log(jsonResults)
-          renderResponses(letters, jsonResults)
+          renderResults(vsQuery, jsonResults)
         })
         .fail(function(err) {
           console.log(err)
@@ -202,7 +239,7 @@
 
     });
 
-    function renderResponses(letters, results) {
+    function renderResults(vsQuery, results) {
     
       var placholder = $('#search-results-placholder');
       placholder.empty();
@@ -210,7 +247,7 @@
       // update count
       $('#result-count').html(results.length)
       // update search query
-      $('#search-query').html(letters)
+      $('#search-query').html(vsQuery)
 
       let html = '';
       $.each(results, function(index, item) {
@@ -220,12 +257,17 @@
         <div id="${doc._id}">Result ${index+1} of ${results.length} </div>
         <article class="search-result row">
           <div>
-            <h3><strong>Call ID:</strong> <a onclick="getTranscript('${doc.call_id}')">${doc.call_id}</a></h3>
+            <h3><strong>Article:</strong> <a href="${doc.url}" target="_blank">${doc.title}</a></h3>
           </div>
           <div>
-              <span><strong>${doc.speaker}:</strong> ${doc.content}</span>
+            <span><strong>Language: </strong>${doc.language}</span>
+          </div>
+          <div>
+              <span><strong>Content: </strong>${doc.text}</span>
             </div>
           <span class="clearfix borda"></span>
+          <br>
+          <span><strong>Hybrid Search Score: </strong>${doc.total_search_score} &nbsp;&nbsp;| &nbsp;&nbsp; <strong>Vector Score: </strong>${doc.vs_score} &nbsp;&nbsp; | &nbsp;&nbsp; <strong>Full Text Search Score: </strong>${doc.fts_score} </span>
           </article>
           <hr>
         `  
@@ -234,68 +276,5 @@
       // place in html
       placholder.append(html);
   }  
-
-  function getTranscript(callId){
-      var letters = $('#search_box').val();
-      $.ajax({
-          url: `/searchTranscript?vector=${letters}&call_id=${callId}`
-        }).done(function(results){
-          var jsonResults = JSON.parse(results).docs
-          console.log(jsonResults)
-          renderTranscript(letters, jsonResults)
-        })
-        .fail(function(err) {
-          console.log(err)
-        });
-    }
-
-
-  function renderTranscript(letters, results) {
-    
-    var placholder = $('#search-results-placholder');
-    placholder.empty();
-    // hide result count group
-    $('#result-count-group').hide()
-    
-
-    let html = '';
-    $.each(results, function(index, item) {
-
-      let doc = item;
-      html += `
-      <article class="search-result row">
-        <div>
-          <h3><strong>Call ID:</strong> ${doc._id}</h3>
-        </div>
-        `
-        $.each(doc.responses, function(index2, item2) {
-        
-        let res = item2;
-
-        if (res.highlight){
-          html += `
-          <div style="background-color:yellow;">
-            <span><strong>${res.speaker}:</strong> ${res.content}</span>
-          </div>
-        `
-        } else {
-          html += `
-          <div>
-            <span><strong>${res.speaker}:</strong> ${res.content}</span>
-          </div>
-        `
-        }
-        });
-      
-      html += `  
-        <span class="clearfix borda"></span>
-        </article>
-        <hr>
-      `  
-    }); 
-
-    // place in html
-    placholder.append(html);
-  }
  
 </script>

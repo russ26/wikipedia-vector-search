@@ -16,130 +16,177 @@ app = Flask(__name__,
 
 connection = pymongo.MongoClient(mongo_uri)
 product_collection = connection[db][collection]
-preTrainedModelName = "paraphrase-MiniLM-L3-v2"
+preTrainedModelName = "all-MiniLM-L6-v2"
 model = SentenceTransformer(preTrainedModelName)
 
 
-@app.route('/searchResponses', methods=['GET'])
-def searchResponses():
+@app.route('/search', methods=['GET'])
+def search():
 
     vector_text = request.args.get('vector', default=None, type=str)
+    boost_text = request.args.get('text', default=None, type=str) 
+    languages = request.args.get('languages', default=None, type=str).split(",")
     vector_query = model.encode(vector_text).tolist()
-    pipeline = [
+    vectorSearchPipeline = [
         {
-            '$search': {
-                'index': 'vectorSearchResponse',
-                'knnBeta': {
-                    'vector': vector_query,
-                    'path': 'vector',
-                    'k': 10
+        '$vectorSearch': {
+            'index': 'default', 
+            'path': 'vector', 
+            'filter': {
+                '$or': [
+                    {
+                        'language': {
+                            '$in': languages,
+                        }
+                    }
+                ]
+            }, 
+            'queryVector': vector_query, 
+            'numCandidates': 20, 
+            'limit': 20
+        }
+        }, {
+            '$addFields': {
+                'vs_score': {
+                    '$meta': 'vectorSearchScore'
+                }, 
+                'fts_score': 0,
+                'total_search_score':  {
+                    '$meta': 'vectorSearchScore'
                 }
             }
-        }, {
-            '$set': {
-                'highlight': True
-            }
-        }, {
+        },
+        {
             '$project': {
+                '_id': 0, 
                 'vector': 0
             }
         }
     ]
 
-    # Execute the pipeline
-    docs = list(product_collection.aggregate(pipeline))
-    # Return the results unders the docs array field
-    json_result = json_util.dumps(
-        {'docs': docs}, json_options=json_util.RELAXED_JSON_OPTIONS)
-    return jsonify(json_result)
-
-
-@app.route('/searchTranscript', methods=['GET'])
-def search():
-
-    vector_text = request.args.get('vector', default=None, type=str)
-    vector_query = model.encode(vector_text).tolist()
-    call_id = request.args.get('call_id', default=None, type=str)
-    pipeline = [
-        {
-            '$search': {
-                'index': 'vectorSearchResponse',
-                'knnBeta': {
-                    'vector': vector_query,
-                    'path': 'vector',
-                    'k': 10
-                }
+    hybridPipeline = [
+    {
+        '$vectorSearch': {
+            'index': 'default', 
+            'path': 'vector', 
+            'filter': {
+                '$or': [
+                    {
+                        'language': {
+                            '$in': languages,
+                        }
+                    }
+                ]
+            }, 
+            'queryVector': vector_query, 
+            'numCandidates': 200, 
+            'limit': 200
+        }
+    }, {
+        '$addFields': {
+            'vs_score': {
+                '$meta': 'vectorSearchScore'
             }
-        }, {
-            '$match': {
-                'call_id': call_id
-            }
-        }, {
-            '$set': {
-                'highlight': True
-            }
-        }, {
-            '$project': {
-                'vector': 0
-            }
-        }, {
-            '$group': {
-                '_id': None,
-                'call_id': {
-                    '$addToSet': '$call_id'
-                },
-                'data': {
-                    '$push': '$$ROOT'
-                }
-            }
-        }, {
-            '$lookup': {
-                'from': 'responses',
-                'localField': 'call_id',
-                'foreignField': 'call_id',
-                'as': 'result'
-            }
-        }, {
-            '$project': {
-                'responses': {
-                    '$map': {
-                        'input': '$result',
-                        'as': 'one',
-                        'in': {
-                            '$mergeObjects': [
-                                '$$one', {
-                                    '$arrayElemAt': [
-                                        {
-                                            '$filter': {
-                                                'input': '$data',
-                                                'as': 'two',
-                                                'cond': {
-                                                    '$eq': [
-                                                        '$$two._id', '$$one._id'
-                                                    ]
-                                                }
-                                            }
-                                        }, 0
-                                    ]
-                                }
+        }
+    }, {
+        '$unionWith': {
+            'coll': collection, 
+            'pipeline': [
+                {
+                    '$search': {
+                        'index': 'textSearch', 
+                        'compound': {
+                            'must': [{
+                                'text': {
+                                    'query': boost_text,
+                                    'path': "text",
+                            }
+                            }],
+                            'should': [{
+                                'text': {
+                                    'query': vector_text,
+                                    'path': "text",
+                            }
+                            }],
+                            'filter': [{
+                                "text": {
+                                    "path": "language",
+                                    "query": languages
+                                } 
+                            }
+                            ],
+                        },
+                    }
+                }, {
+                    '$limit': 200
+                }, {
+                    '$addFields': {
+                        'fts_score': {
+                            '$divide': [
+                                {'$meta': "searchScore"}, 10
                             ]
                         }
                     }
                 }
-            }
-        }, {
-            '$unwind': {
-                'path': '$responses'
-            }
-        }, {
-            '$group': {
-                '_id': '$responses.call_id',
-                'responses': {
-                    '$push': '$$ROOT.responses'
-                }
+            ]
+        }
+    }, {
+        '$group': {
+            '_id': '$_id', 
+            'language': {
+                '$first': '$language'
+            }, 
+            'title': {
+                '$first': '$title'
+            }, 
+            'text': {
+                '$first': '$text'
+            }, 
+            'url': {
+                '$first': '$url'
+            }, 
+            'vs_score': {
+                '$max': '$vs_score'
+            }, 
+            'fts_score': {
+                '$max': '$fts_score'
             }
         }
+    }, {
+        '$project': {
+            '_id': 0, 
+            'language': 1, 
+            'title': 1, 
+            'text': 1, 
+            'url': 1, 
+            'vs_score': {
+                '$ifNull': [
+                    '$vs_score', 0
+                ]
+            }, 
+            'fts_score': {
+                '$ifNull': [
+                    '$fts_score', 0
+                ]
+            },
+            'total_search_score': {'$sum': ["$vs_score", "$fts_score"]}
+        }
+    },
+    {
+        '$sort': {
+            'total_search_score': -1
+        }
+    },
+    {
+        '$limit': 20
+    }
     ]
+
+    if len(boost_text) <= 0:
+         pipeline = vectorSearchPipeline
+    else: 
+        pipeline = hybridPipeline
+    
 
     # Execute the pipeline
     docs = list(product_collection.aggregate(pipeline))
