@@ -1,5 +1,5 @@
 # Atlas Vector Search with Full-Text Search boosting on Wikipedia Articles
-This demo will show how to perform semantic search on Wikipedia articles of different languages. It also gives you the ability to use full-text search capabilities to boose the relevancy scores of the results based on keyword matches.
+This demo will show how to perform semantic search on Wikipedia articles of different languages. It also gives you the ability to use full-text search capabilities to boost the relevancy scores of the results based on keyword matches.
 
 Sample Wiki Article:
 ```json
@@ -14,7 +14,7 @@ Sample Wiki Article:
 # Prerequisites
 
 - MongoDB Atlas Cluster with the M10+ tier in your preferred region
-- Execution was successful with the following dependencies
+- Successfully installed the following dependencies
   - Python 3.9.2 along with pip
     - Following libraries will be required
       - Flask==2.1.0
@@ -35,7 +35,7 @@ Modify the `config/config_database.py` file accordingly with the database connec
 
 ## Create the Search and Vector Search Indexes
 
-Create the following search indexes on the collection that you configured in the config file:
+Create the following search indexes on the collection that you configured in the config file. If the collection does not already exist, you must create the collection first in order to create indexes.
 
 default:
 ```json
@@ -76,9 +76,9 @@ textSearch:
 }
 ```
 
-## Store Wikipedia data in the database
+## Insert the Wikipedia dataset into the database
 
-5000 Wikipedia articles have already been downloaded, vectorized, and added to the `data/` folder, so switch to that folder. We will run encoding on the application side and store the vector inside the database. 
+5000 Wikipedia articles have already been downloaded, vectorized, and added to the `data/` folder, so switch to that folder.
 
 `wikipedia_tiny.json` is meant to be used with [`mongoimport`](https://www.mongodb.com/docs/database-tools/mongoimport/) or Compass to import data, whereas `wikipedia_tiny.gz` is the same file but compressed to make it easier to transfer around. This file contains 5,000 total records of cleaned wikipedia pages in English, French, German, Italian, and Frisian. 
 
@@ -93,10 +93,9 @@ To import `wikipedia_tiny.gz` into a cluster using a databse user authenticating
 mongorestore 'mongodb+srv://<username>:<password>@<clustername>.<atlasProjectHash>.mongodb.net' --archive='wikipedia_tiny.gz' --gzip
 ```
 
-
 ## Get your own clean wikipedia dataset (optional)
 
- If you already inserted the Wikipedia dataset into your collection from the last step, you can skip this step. This step is if you want to run a vector embedding process on a different dataset.
+ If you already inserted the Wikipedia dataset into your collection from the last step, you can skip this step. This optional step is if you want to run a vector embedding process on a different dataset.
 
  All code is contained within `main.py` and requirements within `requirements.txt`. The latter was produced using `pip freeze > requirements.txt`. All configuration for `main.py` is located immediately within the `main()` function near the top of the file, with comments indicated what to change. **The main requirement is to replace the `mongo_uri` variable with your [cluster's connection string](https://www.mongodb.com/docs/guides/atlas/connection-string/).**
 
