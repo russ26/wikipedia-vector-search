@@ -1,36 +1,20 @@
-# MongoDB Atlas Vector Search with Full-Text Search boosting
+# Atlas Vector Search with Full-Text Search boosting
 
 # Atlas Vector Search on Wikipedia Articles
-
-How to make a search on the visual characteristic of the products that were not part of the metadata of the product? 
-Let me be more clear, you have millions of fashion products and you don't have color/category information of the product and you have the following simple data model:
+This demo will show how to perform semantic search on Wikipedia articles of different languages. It also gives you the ability to use full-text search capabilities to boose the relevancy scores of the results based on keyword matches.
 
 ```json
 {
-    "imageFile": "images/7475.jpg",
-    "price": 15.66,
-    "discountPercentage": 7,
-    "avgRating" : 3.47
+    "language": "english",
+    "title": "Lake Andes, South Dakota",
+    "text": "Lake Andes is a city in, and the county seat of, Charles Mix County, South Dakota, United States. The population was 710 at the 2020 census...",
+    "url" : "https://en.wikipedia.org/wiki/Lake%20Andes%2C%20South%20Dakota"
 }
 ```
 
-And, our end users would like to make a search like "green shirts" and we want to return the products that the image (e.g. images/7475.jpg) represents a green shirt. 
-It's very simple with Vector Search as shown in the below:
-
-![01](readme_images/01.png)
-![02](readme_images/02.png)
-
 # Prerequisites
 
-- Download the image dataset from the Kaggle. 
-    - First, download the low-resolution images to test everything correct (280MB): https://www.kaggle.com/datasets/paramaggarwal/fashion-product-images-small
-        - After you've downloaded the compressed file, extract it somewhere. 
-        - After the compressed file extracted, move the following `images` folder, into the `encoder/` folder of this repository. 
-        - ![03](readme_images/fashion-folder.png)
-        - So the repository folders structure should look like this:
-        - ![03](readme_images/03.png)
-    - After you verify that everything works properly then you can download higher resolution images (25GB): https://www.kaggle.com/datasets/paramaggarwal/fashion-product-images-dataset 
-- MongoDB Atlas Cluster with the M10 tier in your preferred region
+- MongoDB Atlas Cluster with the M10+ tier in your preferred region
 - Execution was successful with the following dependencies
   - Check the steps in the section [link][# Steps to Install and Test]
   - Python 3.9.2 along with pip
@@ -52,56 +36,125 @@ It's very simple with Vector Search as shown in the below:
 
 Modify the `config/config_database.py` file accordingly with the database connection string, database and collection information. 
 
-## Create the Search Index
+## Create the Search and Vector Search Indexes
 
-Create the following search index on the collection that you configured in the config file:
+Create the following search indexes on the collection that you configured in the config file:
 
+Default:
 ```json
 {
   "mappings": {
     "fields": {
-      "imageVector": [
+      "language": {
+        "normalizer": "lowercase",
+        "type": "token"
+      },
+      "vector": [
         {
-          "dimensions": 768,
+          "dimensions": 384,
           "similarity": "cosine",
           "type": "knnVector"
         }
-      ],
-      "price": {
-        "type": "number"
-      },
-      "averageRating": {
-         "type": "number"
-      },
-      "discountPercentage": {
-        "type": "number"
-      }
+      ]
     }
   }
 }
 ```
 
-## Run Image Encoding and Store the Vector in the database
-
-Thousands of images have already been downloaded and we will run encoding on the application side and store the vector inside the database. 
-
-Switch to `encoder/` folder and make sure the `images/` folder includes the image files.
-And run the `encoder_and_loader.py` 
-
-```bash
-$ python encoder_and_loader.py
+textSearch:
+```json
+{
+  "mappings": {
+    "dynamic": false,
+    "fields": {
+      "language": {
+        "type": "string"
+      },
+      "text": {
+        "type": "string"
+      }
+    }
+  },
+  "storedSource": true
+}
 ```
 
-It will download the pre-trained model first and then will create worker threads and these threads will go through all the files under the `images/` folder and load the vectors inside the MongoDB collection.
+## Run Encoding and Store the Vector in the database
 
-![04](readme_images/04.png)
+5000 Wikipedia articles have already been downloaded and added to the `data/` folder, so switch to that folder. We will run encoding on the application side and store the vector inside the database. 
 
-It will take some time (depending on the hardware resources on the machine where you run it. With 8 cores it might take a few hours). 
-After it's completed, then verify the collection as shown in the below:
+`wikipedia_tiny.json` is meant to be used with [`mongoimport`](https://www.mongodb.com/docs/database-tools/mongoimport/) or Compass to import data, whereas `wikipedia_tiny.gz` is the same file but compressed to make it easier to transfer around. This file contains 5,000 total records of cleaned wikipedia pages in English, French, German, Italian, and Frisian. 
 
-![05](readme_images/05.png)
+To import `wikipedia_tiny.json` into a cluster using a database user authenticating with SCRAM (i.e. user & password), please use [`mongoimport`](https://www.mongodb.com/docs/database-tools/mongoimport/) like this:
+```bash
+mongoimport 'mongodb+srv://<username>:<password>@<clustername>.<atlasProjectHash>.mongodb.net/' --file='wikipedia_tiny.json'
+```
+To accomplish this using the Compass GUI, [follow this guide](https://www.mongodb.com/docs/compass/current/import-export/#import-data-into-a-collection).
 
-## Run the Web Application to Search for Products
+To import `wikipedia_tiny.gz` into a cluster using a databse user authenticating with SCRAM (i.e. username & password), please use [mongorestore](https://www.mongodb.com/docs/database-tools/mongorestore/) like this:
+```bash
+mongorestore 'mongodb+srv://<username>:<password>@<clustername>.<atlasProjectHash>.mongodb.net' --archive='wikipedia_tiny.gz' --gzip
+```
+
+# Vectorize Query
+
+1. Set up your python environment (if not done already):
+
+```
+python3 -m venv .ENV
+```
+
+```
+source .ENV/bin/activate
+```
+
+```
+pip install -r requirements.txt
+```
+
+2. Open a terminal session where you activated your ENV. 
+
+3. Start python interpreter: ```python3```
+
+4. Import HuggingFace transformers library: ```from sentence_transformers import SentenceTransformer```
+
+5. Get handle on the ```all-MiniLM-L6-v2``` model: ```encoder = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')```
+
+6. Encode query text into vector representation: ```encoder.encode(<yourquery>).tolist()```
+
+# Get your own clean wikipedia dataset
+
+All code is contained within `main.py` and requirements within `requirements.txt`. The latter was produced using `pip freeze > requirements.txt`. All configuration for `main.py` is located immediately within the `main()` function near the top of the file, with comments indicated what to change. **The main requirement is to replace the `mongo_uri` variable with your [cluster's connection string](https://www.mongodb.com/docs/guides/atlas/connection-string/).**
+
+The defaults of `main.py` are:
+    - Indexing all of the clean, English language wikipedia dataset from [HuggingFace](https://huggingface.co/datasets/wikipedia). This amounts to **~16.18GB of raw data**. The python file also includes options to index by a given max bytes or max record count. Other languages are available, just visit the HuggingFace dataset link.
+    - The `all-MiniLM-L6-v2` embedding model is used to vectorize the body of the each wikipedia entry. This also comes from HuggingFace and has 384 dimensions. 
+    - All content is shaped into a JSON document and is inserted into the target Atlas cluster **concurrently** in batches of `1000` documents.
+
+To run the script yourself and generate a different dataset: 
+
+1. Set up your python environment (if not done already):
+
+```
+python3 -m venv .ENV
+```
+
+```
+source .ENV/bin/activate
+```
+
+```
+pip install -r requirements.txt
+```
+
+2. Update the `mongo_uri` variable with your connection string. 
+
+3. Run the script:
+```
+python3 main.py
+```
+
+## Run the Web Application to Search for Articles
 
 Switch to `webapp/` folder and run `flask_server.py`.
 
@@ -109,38 +162,4 @@ Switch to `webapp/` folder and run `flask_server.py`.
 $ python flask_server.py
 ```
 
-This web application has 2 pages:
-
-For a simple product search, open a browser and navigate to `http://localhost:5010/`.
-For advanced search (multiple conditions), navigate to `http://localhost:5010/advanced`.
-
-And give it a try! 
----
-![10](readme_images/10-advanced-01.png)
----
-![07-1](readme_images/07-shoes-01.png)
----
-![07-2](readme_images/07-shoes-02.png)
----
-![07-3](readme_images/07-shoes-03.png)
----
-![07-4](readme_images/07-shoes-04.png)
----
-![07-4](readme_images/15-bag-01.png)
----
-![09](readme_images/09.png)
----
-![11](readme_images/11-kids-01.png)
----
-![12](readme_images/12-bag-01.png)
----
-![13](readme_images/13-jeans-01.png)
----
-![14](readme_images/14-socks-01.png)
-
-
-
-
-
-# wikipedia-vector-search
-# wikipedia-vector-search
+To use this application to search for Wikipedia articles, open a browser and navigate to `http://localhost:5050/`.

@@ -1,3 +1,3 @@
-mongo_uri = "{connection_string}"
-db = "{db}"
+mongo_uri = "{connection string}"
+db = "{database}"
 collection = "{collection}"
