@@ -1,5 +1,5 @@
-# Atlas Vector Search with Full-Text Search boosting on Wikipedia Articles
-This demo will show how to perform semantic search on Wikipedia articles of different languages. It also gives you the ability to use full-text search capabilities to boost the relevancy scores of the results based on keyword matches.
+# Atlas Vector Search with Full-Text Search boosting
+This demo will show how to perform semantic (vector) search on Wikipedia articles of different languages. It also gives you the ability to use full-text search capabilities to boost the relevancy scores of the results based on keyword matches.
 
 Sample Wiki Article:
 ```json
@@ -27,7 +27,7 @@ Sample Wiki Article:
       ```
 
 
-# Steps to Install and Test
+# Steps to Install and Run
 
 ## Configure database connection 
 
@@ -93,9 +93,9 @@ To import `wikipedia_tiny.gz` into a cluster using a databse user authenticating
 mongorestore 'mongodb+srv://<username>:<password>@<clustername>.<atlasProjectHash>.mongodb.net' --archive='wikipedia_tiny.gz' --gzip
 ```
 
-## Get your own clean wikipedia dataset (optional)
+# Get your own clean wikipedia dataset (optional)
 
- If you already inserted the Wikipedia dataset into your collection from the last step, you can skip this step. This optional step is if you want to run a vector embedding process on a different dataset.
+ If you already inserted the Wikipedia dataset into your collection from the last step, you can skip this step. This optional step is if you want to run a vector embedding process on a different Wikipedia dataset.
 
  All code is contained within `main.py` and requirements within `requirements.txt`. The latter was produced using `pip freeze > requirements.txt`. All configuration for `main.py` is located immediately within the `main()` function near the top of the file, with comments indicated what to change. **The main requirement is to replace the `mongo_uri` variable with your [cluster's connection string](https://www.mongodb.com/docs/guides/atlas/connection-string/).**
 
