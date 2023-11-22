@@ -1,8 +1,7 @@
-# Atlas Vector Search with Full-Text Search boosting
-
-# Atlas Vector Search on Wikipedia Articles
+# Atlas Vector Search with Full-Text Search boosting on Wikipedia Articles
 This demo will show how to perform semantic search on Wikipedia articles of different languages. It also gives you the ability to use full-text search capabilities to boose the relevancy scores of the results based on keyword matches.
 
+Sample Wiki Article:
 ```json
 {
     "language": "english",
@@ -16,7 +15,6 @@ This demo will show how to perform semantic search on Wikipedia articles of diff
 
 - MongoDB Atlas Cluster with the M10+ tier in your preferred region
 - Execution was successful with the following dependencies
-  - Check the steps in the section [link][# Steps to Install and Test]
   - Python 3.9.2 along with pip
     - Following libraries will be required
       - Flask==2.1.0
@@ -29,7 +27,6 @@ This demo will show how to perform semantic search on Wikipedia articles of diff
       ```
 
 
-
 # Steps to Install and Test
 
 ## Configure database connection 
@@ -40,7 +37,7 @@ Modify the `config/config_database.py` file accordingly with the database connec
 
 Create the following search indexes on the collection that you configured in the config file:
 
-Default:
+default:
 ```json
 {
   "mappings": {
@@ -79,9 +76,9 @@ textSearch:
 }
 ```
 
-## Run Encoding and Store the Vector in the database
+## Store Wikipedia data in the database
 
-5000 Wikipedia articles have already been downloaded and added to the `data/` folder, so switch to that folder. We will run encoding on the application side and store the vector inside the database. 
+5000 Wikipedia articles have already been downloaded, vectorized, and added to the `data/` folder, so switch to that folder. We will run encoding on the application side and store the vector inside the database. 
 
 `wikipedia_tiny.json` is meant to be used with [`mongoimport`](https://www.mongodb.com/docs/database-tools/mongoimport/) or Compass to import data, whereas `wikipedia_tiny.gz` is the same file but compressed to make it easier to transfer around. This file contains 5,000 total records of cleaned wikipedia pages in English, French, German, Italian, and Frisian. 
 
@@ -96,35 +93,12 @@ To import `wikipedia_tiny.gz` into a cluster using a databse user authenticating
 mongorestore 'mongodb+srv://<username>:<password>@<clustername>.<atlasProjectHash>.mongodb.net' --archive='wikipedia_tiny.gz' --gzip
 ```
 
-# Vectorize Query
 
-1. Set up your python environment (if not done already):
+## Get your own clean wikipedia dataset (optional)
 
-```
-python3 -m venv .ENV
-```
+ If you already inserted the Wikipedia dataset into your collection from the last step, you can skip this step. This step is if you want to run a vector embedding process on a different dataset.
 
-```
-source .ENV/bin/activate
-```
-
-```
-pip install -r requirements.txt
-```
-
-2. Open a terminal session where you activated your ENV. 
-
-3. Start python interpreter: ```python3```
-
-4. Import HuggingFace transformers library: ```from sentence_transformers import SentenceTransformer```
-
-5. Get handle on the ```all-MiniLM-L6-v2``` model: ```encoder = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')```
-
-6. Encode query text into vector representation: ```encoder.encode(<yourquery>).tolist()```
-
-# Get your own clean wikipedia dataset
-
-All code is contained within `main.py` and requirements within `requirements.txt`. The latter was produced using `pip freeze > requirements.txt`. All configuration for `main.py` is located immediately within the `main()` function near the top of the file, with comments indicated what to change. **The main requirement is to replace the `mongo_uri` variable with your [cluster's connection string](https://www.mongodb.com/docs/guides/atlas/connection-string/).**
+ All code is contained within `main.py` and requirements within `requirements.txt`. The latter was produced using `pip freeze > requirements.txt`. All configuration for `main.py` is located immediately within the `main()` function near the top of the file, with comments indicated what to change. **The main requirement is to replace the `mongo_uri` variable with your [cluster's connection string](https://www.mongodb.com/docs/guides/atlas/connection-string/).**
 
 The defaults of `main.py` are:
     - Indexing all of the clean, English language wikipedia dataset from [HuggingFace](https://huggingface.co/datasets/wikipedia). This amounts to **~16.18GB of raw data**. The python file also includes options to index by a given max bytes or max record count. Other languages are available, just visit the HuggingFace dataset link.
@@ -147,14 +121,12 @@ source .ENV/bin/activate
 pip install -r requirements.txt
 ```
 
-2. Update the `mongo_uri` variable with your connection string. 
-
-3. Run the script:
+2. Run the script:
 ```
 python3 main.py
 ```
 
-## Run the Web Application to Search for Articles
+# Run the Web Application to Search for Articles
 
 Switch to `webapp/` folder and run `flask_server.py`.
 
