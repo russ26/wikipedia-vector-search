@@ -84,20 +84,15 @@ textSearch:
 
 To import `wikipedia_tiny.json` into a cluster using a database user authenticating with SCRAM (i.e. user & password), please use [`mongoimport`](https://www.mongodb.com/docs/database-tools/mongoimport/) like this:
 ```bash
-mongoimport 'mongodb+srv://<username>:<password>@<clustername>.<atlasProjectHash>.mongodb.net/' --file='wikipedia_tiny.json'
+mongoimport 'mongodb+srv://<username>:<password>@<clustername>.<atlasProjectHash>.mongodb.net/{DATABASE}' --collection {COLLECTION} --file='wikipedia_tiny.json'
 ```
 To accomplish this using the Compass GUI, [follow this guide](https://www.mongodb.com/docs/compass/current/import-export/#import-data-into-a-collection).
-
-To import `wikipedia_tiny.gz` into a cluster using a databse user authenticating with SCRAM (i.e. username & password), please use [mongorestore](https://www.mongodb.com/docs/database-tools/mongorestore/) like this:
-```bash
-mongorestore 'mongodb+srv://<username>:<password>@<clustername>.<atlasProjectHash>.mongodb.net' --archive='wikipedia_tiny.gz' --gzip
-```
 
 # Get your own clean wikipedia dataset (optional)
 
  If you already inserted the Wikipedia dataset into your collection from the last step, you can skip this step. This optional step is if you want to run a vector embedding process on a different Wikipedia dataset.
 
- All code is contained within `main.py` and requirements within `requirements.txt`. The latter was produced using `pip freeze > requirements.txt`. All configuration for `main.py` is located immediately within the `main()` function near the top of the file, with comments indicated what to change. **The main requirement is to replace the `mongo_uri` variable with your [cluster's connection string](https://www.mongodb.com/docs/guides/atlas/connection-string/).**
+ All code is contained within `main.py` and requirements within `requirements.txt`. All configuration for `main.py` is located immediately within the `main()` function near the top of the file, with comments indicated what to change.
 
 The defaults of `main.py` are:
     - Indexing all of the clean, English language wikipedia dataset from [HuggingFace](https://huggingface.co/datasets/wikipedia). This amounts to **~16.18GB of raw data**. The python file also includes options to index by a given max bytes or max record count. Other languages are available, just visit the HuggingFace dataset link.
@@ -118,6 +113,7 @@ source .ENV/bin/activate
 
 ```
 pip install -r requirements.txt
+pip install --no-deps multiprocess==0.70.15
 ```
 
 2. Run the script:

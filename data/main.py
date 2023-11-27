@@ -10,6 +10,8 @@ from pymongo.server_api import ServerApi
 from hurry.filesize import size
 from pympler import asizeof
 from enum import Enum
+import sys
+sys.path.insert(1, '../config/')
 from config_database import mongo_uri, db, collection
 
 # Needed to easily pretty-print possible IndexBy enum
